@@ -1,0 +1,13 @@
+name: Material_Management_Dashboard
+title: Material_Management_Dashboard
+username:
+account: inqube
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9331105
+bundleId: 7490265
+url: https://inqube.shinyapps.io/Material_Management_Dashboard/
+when: 1690199146.53741
+lastSyncTime: 1690199146.53742
+asMultiple: FALSE
+asStatic: FALSE

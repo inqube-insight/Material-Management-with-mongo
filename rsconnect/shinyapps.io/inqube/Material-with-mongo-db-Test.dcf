@@ -1,0 +1,11 @@
+name: Material-with-mongo-db-Test
+title: Material-with-mongo-db-Test
+username:
+account: inqube
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 9643462
+bundleId: 7714568
+url: https://inqube.shinyapps.io/Material-with-mongo-db-Test/
+asMultiple: FALSE
+asStatic: FALSE
