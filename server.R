@@ -13,15 +13,10 @@ server <- function(input, output, session) {
   
   observeEvent(input$week, {
     
-    recon.data.season=c()
     
-    if(isTruthy(input$week)){
-      
-      recon.data.season=sales.data %>% filter(Week %in% input$week)
-    }
-    else{
-      recon.data.season=sales.data
-    }
+    req(input$week)
+    
+    recon.data.season=sales.data %>% filter(Week %in% input$week)
     
     updatePickerInput(session, 'customer',
                       choices = recon.data.season$Buyer %>%  unique() %>% sort() %>% na.omit(),
@@ -32,17 +27,10 @@ server <- function(input, output, session) {
   
   observeEvent(input$customer, {
     
-    recon.data.season=c()
+    req(input$customer,input$week)
     
-    if(isTruthy(input$customer)){
-      
-      recon.data.season = sales.data %>% filter(Buyer %in% input$customer)
+    recon.data.season = sales.data %>% filter(Buyer %in% input$customer)
 
-    }
-    else{
-      recon.data.season=sales.data
-    }
-    
     updatePickerInput(session, 'season',
                       choices = recon.data.season$Season %>% unique() %>% sort() %>% na.omit(),
                       selected = recon.data.season$Season %>% unique() %>% sort() %>% na.omit()
@@ -51,208 +39,133 @@ server <- function(input, output, session) {
   
   
   observeEvent(input$season, {
-    recon.data.plant = c()
     
-    if(isTruthy(input$season) & isTruthy(input$customer)){
-      
-      recon.data.plant = sales.data %>% filter(Buyer %in% input$customer & Season %in% input$season)
+    req(input$season,input$customer,input$week)
+     
+    recon.data.plant = sales.data %>% filter(Week %in% input$week & Buyer %in% input$customer & Season %in% input$season)
 
-      recon.data.plant=recon.data.plant %>% filter(Plant!='INQUBE PRODUCTION ENGENEERING') %>%
-        mutate(Plant= case_when(
-          grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
-          grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
-          grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
-          grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
-          grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
-          grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
-          TRUE ~ Plant
-        ))
-    }
-    else{
-      recon.data.plant =sales.data 
-    }
-    
-    
+    recon.data.plant=recon.data.plant %>% 
+      filter(Plant!='INQUBE PRODUCTION ENGENEERING')
     
     updatePickerInput(session, 'plant',
-                      choices = recon.data.plant$Plant %>% unique() %>% sort() %>% replace('NA','Unknown'),
-                      selected = recon.data.plant$Plant %>% unique() %>% sort() %>% replace('NA','Unknown'),
+                      choices = recon.data.plant$Plant %>% unique() %>% sort() ,
+                      selected = recon.data.plant$Plant %>% unique() %>% sort(),
     )
   })
   
   
   observeEvent(input$plant, {
-    recon.data.color = c()
+    
+    recon.data.category = sales.data %>% 
+      filter(Week %in% input$week & 
+               Buyer %in% input$customer & 
+               Season %in% input$season &
+               Plant %in% input$plant)
+    
+    updatePickerInput(session, 'product.category',
+                      choices = recon.data.category$P_L_Category %>% unique() %>% sort() %>% na.omit(),
+                      selected = recon.data.category$P_L_Category %>% unique() %>% sort() %>% na.omit(),
+    )
+  })
+  
+  observeEvent(input$product.category, {
+    
+    recon.data.style = sales.data %>% 
+      filter(Week %in% input$week & 
+               Buyer %in% input$customer & 
+               Season %in% input$season &
+               Plant %in% input$plant &
+               P_L_Category %in% input$product.category)
+    
+    print('cbeche')
+    print(head(recon.data.style$Style_Code))
     
     
-    withProgress(message = 'Please wait... gethering data...', value = 0,{
-      
-      if(isTruthy(input$season) & isTruthy(input$customer) & isTruthy(input$plant)){
-        
-        
-        customer.list <- paste(dQuote(input$customer, q = FALSE), collapse = ",")
-        season.list <- paste(dQuote(input$season, q = FALSE), collapse = ",")
-        plant.list <-  input$plant
-        
-        plant.names=as.data.frame(plant.list)%>%mutate(Plant= case_when(
-          grepl('QCL', plant.list, ignore.case = T) ~ 'QUANTUM CLOTHING HORANA',
-          grepl('QAC', plant.list, ignore.case = T) ~ 'SUB-QUANTUM APPAREL CAMBODIA',
-          grepl('BALP', plant.list, ignore.case = T) ~ 'BRANDIX ATHLEISURE POLONNARUWA',
-          grepl('BALG', plant.list, ignore.case = T) ~ 'BRANDIX ATHLEISURE GIRITALE',
-          grepl('BAIM', plant.list, ignore.case = T) ~ 'BRANDIX INTIMATES APPAREL MINUWANGODA',
-          grepl('ISSW', plant.list, ignore.case = T) ~ 'INQUBE SOLUTION SEAMLESS-SEW',
-          TRUE ~ plant.list
-        )) 
-
-        plant.list=paste(dQuote(plant.names[[2]], q = FALSE), collapse = ",")
-        
-        setProgress(.20, detail = "gethering data")
-        
-        recon.data <<-sales.data %>% filter(Buyer != 'CLOVER GLOBAL LIMITED - VS')%>% 
-          filter(Plant!='INQUBE PRODUCTION ENGENEERING') %>%
-          filter(Week %in% input$week & Buyer %in% input$customer & Season %in% input$season) %>%
-          mutate(Plant= case_when(
-            grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
-            grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
-            grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
-            grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
-            grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
-            grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
-            TRUE ~ Plant
-          ))
-        
-        recon.data.color=sales.data 
-      }
-      else{
-        # query.get.indent.data = glue::glue("select Buyer,P_L_Category,Style_Code,Season,OCNo,OCType,FOB,
-        #               OCStatus,OCQty,Process_Name,Plant,Color_Code,Size_Code,Total_Order_Qty,Received_Qty,
-        #               SFG_Issued_Qty,Input_Return_Qty,Rejected_Qty,Stock,Export,FGStock,Category,
-        #               Sub_Category,Indent_No,Indent_Type,Item_Code,Item_Name,Mat_Color_Code,Mat_Size_Code,
-        #               OC_Closed_On,Costed_YY,Actual_YY,Wastage,Costed_YY_Include_Wastage,Unit_Value,
-        #               Required_Qty,RM_Net_Issued,Possible_Extra_Ship,Current_Stock_Value,Week from Recon_Data")
-        # recon.data <<- fetch(dbSendQuery(con,query.get.indent.data), -1)
-        # dbClearResult(dbListResults(con)[[1]])
-        
-        recon.data<<-sales.data %>%  filter(Buyer != 'CLOVER GLOBAL LIMITED - VS') %>% 
-          filter(Plant!='INQUBE PRODUCTION ENGENEERING') %>%
-          mutate(Plant= case_when(
-          grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
-          grepl('QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
-          grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
-          grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
-          grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
-          grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
-          TRUE ~ Plant
-        )) 
-      }
-      
-      setProgress(.30, detail = "Setting Sub Categories")
-      
-      recon.data.color=recon.data %>% filter(Plant %in% input$plant)
-      # updatePickerInput(session, 'sub.category',
-      #                   choices = recon.data.color$Sub_Category %>% unique() %>% sort() %>% na.omit(),
-      #                   selected = recon.data.color$Sub_Category %>% unique() %>% sort() %>% na.omit(),
-      # )
-      
-      setProgress(.40, detail = "Setting Product Categories")
-      updatePickerInput(session, 'product.category',
-                        choices = recon.data.color$P_L_Category %>% unique() %>% sort() %>% na.omit(),
-                        selected = recon.data.color$P_L_Category %>% unique() %>% sort() %>% na.omit(),
-      )
-      
-      setProgress(.50, detail = "Setting Styles")
-      updatePickerInput(session, 'style',
-                        choices = recon.data.color$Style_Code %>% unique() %>% sort() %>% na.omit(),
-                        selected = recon.data.color$Style_Code %>% unique() %>% sort() %>% na.omit(),
-      )
-      
-      setProgress(.60, detail = "Setting OC No")
-      updatePickerInput(session, 'oc.no',
-                        choices = recon.data.color$OCNo%>% unique() %>% sort() %>% na.omit(),
-                        selected = recon.data.color$OCNo %>% unique() %>% sort() %>% na.omit(),
-      )
-      
-      # setProgress(.70, detail = "Setting OC types")
-      # updatePickerInput(session, 'oc.type',
-      #                   choices = recon.data.color$OCType%>% unique() %>% sort() %>% na.omit(),
-      #                   selected = recon.data.color$OCType %>% unique() %>% sort() %>% na.omit(),
-      # )
-      
-    })
+    updatePickerInput(session, 'style',
+                      choices = recon.data.style$Style_Code %>% unique() %>% sort() %>% na.omit(),
+                      selected = recon.data.style$Style_Code %>% unique() %>% sort() %>% na.omit(),
+    )
     
+  })
+    
+  observeEvent(input$style, {
+    
+    
+    recon.data.oc.type = sales.data %>% 
+      filter(Week %in% input$week & 
+               Buyer %in% input$customer & 
+               Season %in% input$season &
+               Plant %in% input$plant &
+               P_L_Category %in% input$product.category &
+               Style_Code %in% input$style 
+             )
+    
+    updatePickerInput(session, 'oc.type',
+                      choices = recon.data.oc.type$OCType %>% unique() %>% sort() %>% na.omit(),
+                      selected = recon.data.oc.type$OCType %>% unique() %>% sort() %>% na.omit(),
+    )
     
   })
   
-  # filtered.recon.data <-reactive({
-  #   
-  #   req(recon.data)
-  #   
-  #   if(isTruthy(input$oc.no)){
-  #     
-  #     filtered.data=recon.data %>%filter(Week %in% input$week &
-  #                                           Buyer %in% input$customer &
-  #                                           Season %in% input$season  &
-  #                                           Plant %in% input$plant &
-  #                                           Sub_Category %in% input$sub.category &
-  #                                           Color_Code %in% input$color &
-  #                                           P_L_Category %in% input$product.category &
-  #                                           OCNo %in% input$oc.no &
-  #                                           OCType %in% input$oc.type &
-  #                                           Style_Code %in% input$style
-  #     ) 
-  #   }
-  #   
-  #   else{
-  #     filtered.data=recon.data
-  #   }
-  #   
-  # })
-  
-
+  observeEvent(input$oc.type, {
+    
+    recon.data.oc.type = sales.data %>% 
+      filter(Week %in% input$week & 
+               Buyer %in% input$customer & 
+               Season %in% input$season &
+               Plant %in% input$plant &
+               P_L_Category %in% input$product.category &
+               Style_Code %in% input$style &
+               OCType %in% input$oc.type
+      )
+    
+    updatePickerInput(session, 'oc.no',
+                      choices = recon.data.oc.type$OCNo %>% unique() %>% sort() %>% na.omit(),
+                      selected = recon.data.oc.type$OCNo %>% unique() %>% sort() %>% na.omit(),
+    )
+    
+  })
   
   
-  # Calculate Optimum Qty
-  cal.optimum.qty =function(){
+  # Open Qty Data 
+  
+  open.qty =function(){
     
-    req(input$oc.no)
+    open=mongo("VPO_Update_Open",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+    open.qty =open$find(fields='{"Style_Code":1,"Season":1,"Open_Qty":1,"Buyer":1}')
     
-    query.get.indent.data = "select Summary_OC_No as OCNo,Size_Code,DOC_Order_Qty from VPO_Update_Closed"
-    size.wise.data <<- fetch(dbSendQuery(con,query.get.indent.data), -1)
-    dbClearResult(dbListResults(con)[[1]])
+    open.qty.data=open.qty %>% mutate(Style_Code=str_sub(Style_Code,1,9))
     
-    size.wise.data$DOC_Order_Qty=as.double(size.wise.data$DOC_Order_Qty)
+    return(open.qty.data)
+  }
+  
+  #Get WriteOff data
+  
+  write.off.data = function(){
     
-    size.wise.data=size.wise.data %>% with_groups(c(OCNo,Size_Code),
-                                                  summarise,
-                                                  DOC_Order_Qty=sum(as.double(DOC_Order_Qty),na.rm=TRUE))
+    w.off.data =mongo("Write_Off_Details",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+    W.Off.Data=w.off.data$find('{}')
     
-    recon.data=recon.data %>%with_groups(c(OCNo,Buyer,Plant,P_L_Category,Week),
-                                                    summarise,
-                                                    Buyer=first(Buyer),
-                                                    Plant=first(Plant),
-                                                    P_L_Category=first(P_L_Category),
-                                                    Week=first(Week),
-                                                    FOB=first(FOB),
-                                                    OCQty=max(OCQty),
-                                                    Possible_Extra_Ship=first(Possible_Extra_Ship))
+    return(W.Off.Data)
+  }
+  
+  
+  ratio.data = function(){
     
+    ratio=mongo("Ratio_Summary",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+    ratio.data=ratio$find(query='{"Status":"Active"}')
+    ratio.data =ratio.data %>%
+      mutate(Plant= case_when(
+        grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
+        grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
+        grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
+        grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
+        grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
+        grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
+        TRUE ~ Plant
+      ))
     
-    
-    Optimum.qty.data=size.wise.data %>% 
-      inner_join(recon.data,by=c('OCNo')) %>% 
-      mutate(Optimum_Qty=(DOC_Order_Qty+floor(DOC_Order_Qty*Possible_Extra_Ship/100)))%>%
-      with_groups(c(OCNo,Size_Code,Buyer,Plant,P_L_Category,Week),
-                  summarise,
-                  Optimum_Qty=first(Optimum_Qty),
-                  OC_Qty=first(OCQty))
-    
-    Optimum.qty.data=Optimum.qty.data %>% 
-      with_groups(c(OCNo,Buyer,Plant,P_L_Category,Week),
-                  summarise,
-                  Optimum_Qty=sum(Optimum_Qty,na.rm=TRUE),
-                  OC_Qty=first(OC_Qty)
-                  )
-
+    return(ratio.data)
   }
 
   # Calculate Over Issued
@@ -280,15 +193,6 @@ server <- function(input, output, session) {
    
     sales.data =sales.data %>%
       filter(Plant!='INQUBE PRODUCTION ENGENEERING') %>%
-    mutate(Plant= case_when(
-      grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
-      grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
-      grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
-      grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
-      grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
-      grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
-      TRUE ~ Plant
-    ))%>% 
       filter(Week %in% input$week &
              Buyer %in% input$customer &
              Season %in% input$season  &
@@ -301,37 +205,38 @@ server <- function(input, output, session) {
     
   })
   
+  rm.data <<-rm.data %>%
+    left_join(write.off.data(),by=c('OCNo'='SOC','Material_Item_Code'='Article_Code','Material_Mat_Color_Code'='Article_Color_Code','Style_Code'))
   
   
   filtered.rm.data <-reactive({
     
     rm.data =rm.data %>% filter(Plant!='INQUBE PRODUCTION ENGENEERING') %>%
-      mutate(Plant= case_when(
-        grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
-        grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
-        grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
-        grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
-        grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
-        grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
-        TRUE ~ Plant
-      ))%>% 
-      filter(OCNo %in% input$oc.no )
+      filter(Week %in% input$week &
+               Buyer %in% input$customer &
+               Season %in% input$season &
+               Plant %in% input$plant &
+               P_L_Category %in% input$product.category &
+               Style_Code %in% input$style &
+               OCType %in% input$oc.type &
+               OCNo %in% input$oc.no )
     return(rm.data)
     
   })
   
   filtered.ratio.data <-reactive({
     
-    ratio.data =ratio.data %>% filter(Plant!='INQUBE PRODUCTION ENGENEERING') %>%
-      mutate(Plant= case_when(
-        grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
-        grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
-        grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
-        grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
-        grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
-        grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
-        TRUE ~ Plant
-      ))%>% filter(OCNo %in% input$oc.no )
+    # print(head(ratio.data))
+    
+    ratio.data =ratio.data() %>% filter(Plant!='INQUBE PRODUCTION ENGENEERING') %>%
+      filter(Week %in% input$week &
+               Buyer %in% input$customer &
+               Season %in% input$season &
+               Plant %in% input$plant &
+               P_L_Category %in% input$product.category &
+               Style_Code %in% input$style &
+               # OCType %in% input$oc.type &
+               OCNo %in% input$oc.no )
     
     return(ratio.data)
     
@@ -377,8 +282,7 @@ server <- function(input, output, session) {
       
       Value =filtered.rm.data()
       
-      
-      actual.rmc.value=paste0(round(sum(Value$Material$Actual_RM_Value,na.rm=TRUE)/sum(filtered.sales.data()$Actual_Sales_Value)*100,2),'%')
+      actual.rmc.value=paste0(round(sum(Value$Material$Actual_RM_Value,na.rm=TRUE)/sum(filtered.sales.data()$Actual_Sales_Value,na.rm=TRUE)*100,2),'%')
       
       setBorderColor(valueBox(tags$p(actual.rmc.value, style = "font-size: 50%;"), tags$p("Actual RMC", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
@@ -429,6 +333,24 @@ server <- function(input, output, session) {
     else{
       
       setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("Planned Wastage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      
+    }
+    
+  })
+  output$write.off <- renderValueBox({
+    
+    if(isTruthy(input$oc.no)){
+      
+      write_off=sum(as.numeric(filtered.rm.data()$Value),na.rm=TRUE)/sum(filtered.sales.data()$Actual_Sales_Value,na.rm=TRUE)
+      
+      write_off=round(write_off*100,2)
+      
+      setBorderColor(valueBox(tags$p(paste0(write_off,'%'), style = "font-size: 50%;"), tags$p("W/Off", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      
+    }
+    else{
+      
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("W/Off", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -523,24 +445,49 @@ server <- function(input, output, session) {
     
   })
   
+  # Display W/Off Value
+  
+  output$write.off.value <- renderValueBox({
+    
+    if(isTruthy(input$oc.no)){
+      
+      Value =filtered.rm.data()
+      
+      optimum.rmc.value=paste0(round(sum((as.numeric(Value$Value)),na.rm=TRUE)/1000,2),'k')
+      
+      setBorderColor(valueBox(tags$p(optimum.rmc.value, style = "font-size: 50%;"), tags$p("W/Off Value", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      
+    }
+    else{
+      
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("W/Off Value", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      
+    }
+    
+  })
+  
+  
   rmc.chart.df <- reactive({
     
+    
+    filtered.rm.data=rm.data %>% filter(Week %in% input$week)
+    filtered.sales.data=sales.data %>% filter(Week %in% input$week)
     x=''
 
     if(input$rmc.category=="Product Type"){
       
-      Actual_RM_Value = filtered.rm.data() %>% group_by(P_L_Category) %>% summarise(Actual_RM_Value=sum(Material$Actual_RM_Value,na.rm=TRUE))
-      Actual_Sales_Value =filtered.sales.data() %>% group_by(P_L_Category) %>% summarise(Actual_Sales_Value=sum(Actual_Sales_Value,na.rm=TRUE))
+      Actual_RM_Value = filtered.rm.data %>% group_by(P_L_Category) %>% summarise(Actual_RM_Value=sum(Material$Actual_RM_Value,na.rm=TRUE))
+      Actual_Sales_Value =filtered.sales.data%>% group_by(P_L_Category) %>% summarise(Actual_Sales_Value=sum(Actual_Sales_Value,na.rm=TRUE))
       Actual_Percentage= Actual_RM_Value %>% inner_join(Actual_Sales_Value,by='P_L_Category')%>% mutate(Value=(Actual_RM_Value/Actual_Sales_Value)*100,
                                                                                                     Category='Actual')
       
-      Costed_RM_Value= filtered.rm.data() %>% group_by(P_L_Category) %>% summarise(Costed_RM_Value=sum(Material$Costed_RM_Value,na.rm=TRUE))
-      Planned_Sales_Value =filtered.sales.data()  %>% group_by(P_L_Category) %>% summarise(Planned_Sales_Value=sum(Planned_Sales_Value,na.rm=TRUE))
+      Costed_RM_Value= filtered.rm.data %>% group_by(P_L_Category) %>% summarise(Costed_RM_Value=sum(Material$Costed_RM_Value,na.rm=TRUE))
+      Planned_Sales_Value =filtered.sales.data %>% group_by(P_L_Category) %>% summarise(Planned_Sales_Value=sum(Planned_Sales_Value,na.rm=TRUE))
       Costed_Percentage= Costed_RM_Value %>% inner_join(Planned_Sales_Value,by='P_L_Category')%>% mutate(Value=(Costed_RM_Value/Planned_Sales_Value)*100,
                                                                                                      Category='Costed')
       
-      Optimum_RM_Value= filtered.rm.data() %>% group_by(P_L_Category) %>% summarise(Optimum_RMC=sum(Material$Optimum_RMC,na.rm=TRUE))
-      Optimum_Sales_Value = filtered.sales.data() %>% group_by(P_L_Category) %>% summarise(Optimum_Sales=sum(Optimum_Sales,na.rm=TRUE))
+      Optimum_RM_Value= filtered.rm.data %>% group_by(P_L_Category) %>% summarise(Optimum_RMC=sum(Material$Optimum_RMC,na.rm=TRUE))
+      Optimum_Sales_Value = filtered.sales.data %>% group_by(P_L_Category) %>% summarise(Optimum_Sales=sum(Optimum_Sales,na.rm=TRUE))
       Optimum_Percentage= Optimum_RM_Value %>% left_join(Optimum_Sales_Value,by='P_L_Category')%>%
         mutate(Value=(Optimum_RMC/Optimum_Sales)*100, Category='Optimum')
       
@@ -555,18 +502,18 @@ server <- function(input, output, session) {
     }
     else if(input$rmc.category=="Buyer"){
       
-      Actual_RM_Value = filtered.rm.data() %>% group_by(Buyer) %>% summarise(Actual_RM_Value=sum(Material$Actual_RM_Value,na.rm=TRUE))
-      Actual_Sales_Value =filtered.sales.data() %>% group_by(Buyer) %>% summarise(Actual_Sales_Value=sum(Actual_Sales_Value,na.rm=TRUE))
+      Actual_RM_Value = filtered.rm.data %>% group_by(Buyer) %>% summarise(Actual_RM_Value=sum(Material$Actual_RM_Value,na.rm=TRUE))
+      Actual_Sales_Value =filtered.sales.data %>% group_by(Buyer) %>% summarise(Actual_Sales_Value=sum(Actual_Sales_Value,na.rm=TRUE))
       Actual_Percentage= Actual_RM_Value %>% inner_join(Actual_Sales_Value,by='Buyer')%>% mutate(Value=(Actual_RM_Value/Actual_Sales_Value)*100,
                                                                                                     Category='Actual')
       
-      Costed_RM_Value= filtered.rm.data() %>% group_by(Buyer) %>% summarise(Costed_RM_Value=sum(Material$Costed_RM_Value,na.rm=TRUE))
-      Planned_Sales_Value = filtered.sales.data() %>% group_by(Buyer) %>% summarise(Planned_Sales_Value=sum(Planned_Sales_Value,na.rm=TRUE))
+      Costed_RM_Value= filtered.rm.data %>% group_by(Buyer) %>% summarise(Costed_RM_Value=sum(Material$Costed_RM_Value,na.rm=TRUE))
+      Planned_Sales_Value = filtered.sales.data %>% group_by(Buyer) %>% summarise(Planned_Sales_Value=sum(Planned_Sales_Value,na.rm=TRUE))
       Costed_Percentage= Costed_RM_Value %>% inner_join(Planned_Sales_Value,by='Buyer')%>% mutate(Value=(Costed_RM_Value/Planned_Sales_Value)*100,
                                                                                                      Category='Costed')
 
-      Optimum_RM_Value= filtered.rm.data() %>% group_by(Buyer) %>% summarise(Optimum_RMC=sum(Material$Optimum_RMC,na.rm=TRUE))
-      Optimum_Sales_Value = filtered.sales.data() %>% group_by(Buyer) %>% summarise(Optimum_Sales=sum(Optimum_Sales,na.rm=TRUE))
+      Optimum_RM_Value= filtered.rm.data %>% group_by(Buyer) %>% summarise(Optimum_RMC=sum(Material$Optimum_RMC,na.rm=TRUE))
+      Optimum_Sales_Value = filtered.sales.data%>% group_by(Buyer) %>% summarise(Optimum_Sales=sum(Optimum_Sales,na.rm=TRUE))
       Optimum_Percentage= Optimum_RM_Value %>% 
         left_join(Optimum_Sales_Value,by='Buyer')%>%
         mutate(Value=(Optimum_RMC/Optimum_Sales)*100,
@@ -581,17 +528,17 @@ server <- function(input, output, session) {
     }
     else{
       
-      Actual_RM_Value = filtered.rm.data() %>% group_by(Plant) %>% summarise(Actual_RM_Value=sum(Material$Actual_RM_Value,na.rm=TRUE))
-      Actual_Sales_Value =filtered.sales.data()%>% group_by(Plant) %>% summarise(Actual_Sales_Value=sum(Actual_Sales_Value,na.rm=TRUE))
+      Actual_RM_Value = filtered.rm.data %>% group_by(Plant) %>% summarise(Actual_RM_Value=sum(Material$Actual_RM_Value,na.rm=TRUE))
+      Actual_Sales_Value =filtered.sales.data%>% group_by(Plant) %>% summarise(Actual_Sales_Value=sum(Actual_Sales_Value,na.rm=TRUE))
       Actual_Percentage= Actual_RM_Value %>% inner_join(Actual_Sales_Value,by='Plant')%>% 
         mutate(Value=(Actual_RM_Value/Actual_Sales_Value)*100,Category='Actual')
       
-      Costed_RM_Value= filtered.rm.data() %>% group_by(Plant) %>% summarise(Costed_RM_Value=sum(Material$Costed_RM_Value,na.rm=TRUE))
-      Planned_Sales_Value =filtered.sales.data() %>% group_by(Plant) %>% summarise(Planned_Sales_Value=sum(Planned_Sales_Value,na.rm=TRUE))
+      Costed_RM_Value= filtered.rm.data %>% group_by(Plant) %>% summarise(Costed_RM_Value=sum(Material$Costed_RM_Value,na.rm=TRUE))
+      Planned_Sales_Value =filtered.sales.data %>% group_by(Plant) %>% summarise(Planned_Sales_Value=sum(Planned_Sales_Value,na.rm=TRUE))
       Costed_Percentage= Costed_RM_Value %>% inner_join(Planned_Sales_Value,by='Plant')%>% mutate(Value=(Costed_RM_Value/Planned_Sales_Value)*100,Category='Costed')
       
-      Optimum_RM_Value= filtered.rm.data() %>% group_by(Plant) %>% summarise(Optimum_RMC=sum(Material$Optimum_RMC,na.rm=TRUE))
-      Optimum_Sales_Value = filtered.sales.data() %>% group_by(Plant) %>% summarise(Optimum_Sales=sum(Optimum_Sales,na.rm=TRUE))
+      Optimum_RM_Value= filtered.rm.data %>% group_by(Plant) %>% summarise(Optimum_RMC=sum(Material$Optimum_RMC,na.rm=TRUE))
+      Optimum_Sales_Value = filtered.sales.data %>% group_by(Plant) %>% summarise(Optimum_Sales=sum(Optimum_Sales,na.rm=TRUE))
       Optimum_Percentage= Optimum_RM_Value %>% left_join(Optimum_Sales_Value,by='Plant')%>% mutate(Value=(Optimum_RMC/Optimum_Sales)*100,
                                                                                                       Category='Optimum')
       
@@ -653,42 +600,15 @@ server <- function(input, output, session) {
   
   output$deviation.chart <- renderApexchart({
     
-    req(input$oc.no)
+    filtered.rm.data=rm.data %>% filter(Week %in% input$week)
 
-    # wb <- createWorkbook()
-    # 
-    # modifyBaseFont(wb, fontSize = 8, fontColour = "black", fontName = "Arial")
-    # 
-    # addWorksheet(wb, 'Over Consumption', gridLines = F)
-    # writeData(wb, 'Over Consumption', cal.over.deviation() %>%
-    #             group_by(Week,P_L_Category,Buyer,Plant,OCNo,Item_Code,Mat_Color_Code,Mat_Size_Code,Style_Code) %>%
-    #             summarise(Over_Deviation=sum(Over_Deviation,na.rm=TRUE))%>%
-    #             setNames(nm = str_replace_all(names(.), '[.]', ' ')),
-    #           headerStyle = createStyle(wrapText = T,border = c("top", "bottom", "left", "right"),
-    #                                     fgFill = '#deebf7',
-    #                                     textDecoration= 'bold',
-    #                                     halign = 'center',
-    #                                     valign = 'center') ,colNames = T, borders = 'all')
-
-#     addWorksheet(wb, 'under consumption', gridLines = F)
-#     writeData(wb, 'under consumption', cal.under.consumption() %>%
-#                 setNames(nm = str_replace_all(names(.), '[.]', ' ')),
-#               headerStyle = createStyle(wrapText = T,border = c("top", "bottom", "left", "right"),
-#                                         fgFill = '#deebf7',
-#                                         textDecoration= 'bold',
-#                                         halign = 'center',
-#                                         valign = 'center') ,colNames = T, borders = 'all')
-# 
-    # saveWorkbook(wb,'Over Consumption.xlsx')
-
-    
-    Over_Deviation_Data=filtered.rm.data() %>% 
+    Over_Deviation_Data=filtered.rm.data %>% 
       with_groups(c(Buyer),
                  summarise,
                  Value=sum(Material$Over_Deviation,na.rm=TRUE)) %>% mutate(Category='Over Deviation') %>%
-      bind_rows(filtered.rm.data() %>%with_groups(c(Buyer),
-                                                      summarise,
-                                                      Value=sum(Material$Under_Deviation,na.rm=TRUE)) %>% mutate(Category='Under Deviation')) 
+      bind_rows(filtered.rm.data %>%with_groups(c(Buyer),
+                                       summarise,
+                                       Value=sum(Material$Under_Deviation,na.rm=TRUE)) %>% mutate(Category='Under Deviation')) 
     
     Over_Deviation_Data %>%apex(aes(x = Buyer, y = Value, group = Category),type = 'bar') %>%
       ax_legend(position = 'top', horizontalAlign = 'left',labels=list(foreColor=c('#FFFFFB','#00000'))) %>%
@@ -703,13 +623,27 @@ server <- function(input, output, session) {
   
   opportunity.loss.df=reactive({
     
-    
-    summary.left.stock= rm.data %>%filter(Week %in% input$week) %>% 
-      filter(Buyer %in% input$customer) %>%
-      with_groups(c(Buyer,Style_Code),
-                  summarise,
+    if(input$top.ten.opportunity.loss=='Style'){
+      
+      summary.left.stock= rm.data %>%filter(Week %in% input$week & Buyer %in% input$customer ) %>% 
+        with_groups(c(Buyer,Style_Code),
+                    summarise,
+                    Over_Deviation=round(abs(sum(Material$Over_Deviation,na.rm=TRUE)),2),
+                    Under_Deviation=round(sum(Material$Under_Deviation,na.rm=TRUE),2),
+                    Opportunity_Loss=round(sum(Material$Opportunity_Loss,na.rm=TRUE),2))%>% 
+        mutate(Style_Code=str_sub(Style_Code,1,9)) %>% arrange(desc(Opportunity_Loss))
+    }
+    else{
+      summary.left.stock= rm.data %>%filter(Week %in% input$week & Buyer %in% input$customer ) %>% 
+        group_by(Material$Item_Code,Buyer) %>%
+        summarise(Over_Deviation=round(abs(sum(Material$Over_Deviation,na.rm=TRUE)),2),
+                  Under_Deviation=round(sum(Material$Under_Deviation,na.rm=TRUE),2),
                   Opportunity_Loss=round(sum(Material$Opportunity_Loss,na.rm=TRUE),2))%>% 
-      mutate(Style_Code=str_sub(Style_Code,1,9)) %>% arrange(desc(Opportunity_Loss))
+       arrange(desc(Opportunity_Loss)) %>%
+       rename('Item_Code'='Material$Item_Code')
+  
+    }
+    
     
   })
   
@@ -720,7 +654,8 @@ server <- function(input, output, session) {
     
     filename = function() { 'Opportunity Loss.xlsx' },
     content = function(cont) {
-      opportunity.loss.df() %>%
+      opportunity.loss.df()%>%
+        setNames(nm = gsub("_", " ", colnames(.))) %>%
         writexl::write_xlsx(cont,col_names = TRUE,format_headers = TRUE) 
     }
   )
@@ -730,6 +665,52 @@ server <- function(input, output, session) {
   output$opportunity.loss.summary <- renderReactable({
     
     summary.left.stock=opportunity.loss.df()
+    
+    cols=''
+    
+    if(input$top.ten.opportunity.loss=='Style'){
+      cols=list(
+        
+        Opportunity_Loss = colDef(
+          name = 'Opportunity Loss($)', 
+          format = colFormat(separators = T, digits = 0)
+        ),
+        Style_Code = colDef(
+          name = 'Style Code',
+        ),
+        Under_Deviation = colDef(
+          name = 'Under Deviation($)', 
+          format = colFormat(separators = T, digits = 0)
+        ),
+        Over_Deviation = colDef(
+          name = 'Over Deviation($)', 
+          format = colFormat(separators = T, digits = 0)
+        )
+        
+      )
+    }
+    else{
+      
+      cols=list(
+        Opportunity_Loss = colDef(
+          name = 'Opportunity Loss($)', 
+          format = colFormat(separators = T, digits = 0)
+        ),
+        Item_Code = colDef(
+          name = 'Item Code',
+        ),
+        Under_Deviation = colDef(
+          name = 'Under Deviation($)', 
+          format = colFormat(separators = T, digits = 0)
+        ),
+        Over_Deviation = colDef(
+          name = 'Over Deviation($)', 
+          format = colFormat(separators = T, digits = 0)
+        )
+        
+      )
+      
+    }
 
     reactable(head(summary.left.stock,10),searchable = F, highlight = T,
               wrap = T, outlined = T, borderless = F,resizable = TRUE,
@@ -738,30 +719,11 @@ server <- function(input, output, session) {
                 color = '#FFFFFB',
                 backgroundColor = '#000000',
                 searchInputStyle = list(width = "30%"),
-                headerStyle = list(background = "#44546A", color = "white", fontWeight = "normal"),
+                headerStyle = list(background = "#05204A", color = "white", fontWeight = "normal"),
                 footerStyle = list(fontWeight = "normal", background = "#FFFFFB"),
                 rowSelectedStyle = list(backgroundColor = "#FFFF99", boxShadow = "inset 2px 0 0 0 #41ab5d")
               ), 
-              columns = list(
-                
-                Opportunity_Loss = colDef(
-                  name = 'Opportunity_Loss($)', 
-                  format = colFormat(separators = T, digits = 0)
-                  ),
-                
-                Buyer = colDef(
-                  html = TRUE,
-                  cell =  function(value) {
-                    tippy(
-                      div(
-                        value,
-                      ),
-                      tooltip = value
-                    )
-                  },
-                )
-                
-              ),
+              columns = cols,
               
     )
   })
@@ -896,7 +858,7 @@ server <- function(input, output, session) {
     req(input$oc.no)
     
     data=filtered.ratio.data()
-    
+
     Order_to_Ship_Value= sum(data$OS_Ship_Qty,na.rm=TRUE)/sum(data$OS_Total_Order_Qty,na.rm=TRUE)
     
     order.ship.value=round(Order_to_Ship_Value*100,2)
@@ -1036,7 +998,7 @@ server <- function(input, output, session) {
     
     req(input$oc.no)
     
-    data=filtered.ratio.data()
+    data=filtered.ratio.data() %>% filter(!grepl('SUB|CAMBODIA',Plant,ignore.case = T))
     
     Cut_to_Produce_Value=sum(data$CP_Produce_Received_Qty,na.rm=TRUE)/sum(data$CP_Cutting_Received_Qty,na.rm=TRUE)
     
@@ -1077,11 +1039,11 @@ server <- function(input, output, session) {
 
     req(input$oc.no)
 
-    data =filtered.ratio.data()
+    data =ratio.data() %>% filter(Buyer %in% input$customer)
     Order_to_Ship=data %>%group_by(Week) %>% summarise(Value=sum(OS_Ship_Qty,na.rm=TRUE)/sum(OS_Total_Order_Qty,na.rm=TRUE)) %>% mutate(Category='Order_to_Ship')
     Cut_to_Ship=data %>%group_by(Week) %>% summarise(Value=sum(CS_Ship_Qty,na.rm=TRUE)/sum(CS_Received_Qty,na.rm=TRUE))%>% mutate(Category='Cut_to_Ship')
-    Order_to_Cut=filtered.ratio.data() %>%group_by(Week) %>% summarise(Value=sum(OC_Received_Qty,na.rm=TRUE)/sum(OC_Total_Order_Qty,na.rm=TRUE))%>% mutate(Category='Order_to_Cut')
-    Cut_to_Produce=filtered.ratio.data() %>%group_by(Week) %>% summarise(Value=sum(CP_Produce_Received_Qty,na.rm=TRUE)/sum(CP_Cutting_Received_Qty,na.rm=TRUE))%>% mutate(Category='Cut_to_Produce')
+    Order_to_Cut=data %>%group_by(Week) %>% summarise(Value=sum(OC_Received_Qty,na.rm=TRUE)/sum(OC_Total_Order_Qty,na.rm=TRUE))%>% mutate(Category='Order_to_Cut')
+    Cut_to_Produce=data %>%filter(!grepl('SUB|CAMBODIA',Plant,ignore.case = T)) %>% group_by(Week) %>% summarise(Value=sum(CP_Produce_Received_Qty,na.rm=TRUE)/sum(CP_Cutting_Received_Qty,na.rm=TRUE))%>% mutate(Category='Cut_to_Produce')
 
 
     Order_to_Ship %>% select(Week,Category,Value) %>% bind_rows(Cut_to_Ship %>%select(Week,Category,Value))%>%
@@ -1107,17 +1069,18 @@ server <- function(input, output, session) {
   
   ratio.category.df <- reactive({
     
+    filtered.ratio.data=ratio.data() %>% filter(Week %in% input$week)
     
     x=''
     
     if(input$ratio.category=="Buyer"){
       
-      order.to.ship=filtered.ratio.data() %>%with_groups(c(Buyer), 
+      order.to.ship=filtered.ratio.data %>%with_groups(c(Buyer), 
                                                                 summarise,
                                                                 Value=sum(OS_Ship_Qty,na.rm=TRUE)/sum(OS_Total_Order_Qty,na.rm=TRUE)*100) %>% 
         mutate(Category='Actual')
       
-      optimum.qty=filtered.ratio.data() %>%with_groups(c(Buyer), 
+      optimum.qty=filtered.ratio.data %>%with_groups(c(Buyer), 
                                                    summarise,
                                                    Value=sum(Optimum_Qty,na.rm=TRUE)/sum(DOC_Order_Qty,na.rm=TRUE)*100) %>%
         mutate(Category='Target')
@@ -1129,12 +1092,12 @@ server <- function(input, output, session) {
     }
     else{
       
-      order.to.ship=filtered.ratio.data() %>%with_groups(c(Plant), 
+      order.to.ship=filtered.ratio.data %>%with_groups(c(Plant), 
                                                                 summarise,
                                                                 Value=sum(OS_Ship_Qty,na.rm=TRUE)/sum(OS_Total_Order_Qty,na.rm=TRUE)*100) %>%
         mutate(Category='Actual')
       
-      optimum.qty=filtered.ratio.data() %>%with_groups(c(Plant), 
+      optimum.qty=filtered.ratio.data %>%with_groups(c(Plant), 
                                                    summarise,
                                                    Value=sum(Optimum_Qty,na.rm=TRUE)/sum(DOC_Order_Qty,na.rm=TRUE)*100) %>%
         mutate(Category='Target')
@@ -1187,7 +1150,7 @@ server <- function(input, output, session) {
   
   output$myHC <- renderHighchart({
     
-    
+    req(input$oc.no)
     data=filtered.rm.data()
     
     avLE = filtered.sales.data() %>% filter(Loss_Of_Sales>0) %>%
@@ -1260,7 +1223,7 @@ server <- function(input, output, session) {
                                                               OS_Ship_Qty=sum(OS_Ship_Qty,na.rm=TRUE),
                                                               OS_Total_Order_Qty=sum(OS_Total_Order_Qty,na.rm=TRUE),
                                                               Order_to_Ship=sum(OS_Ship_Qty,na.rm=TRUE)/sum(OS_Total_Order_Qty,na.rm=TRUE)*100) 
-    cut.to.produce=filtered.ratio.data()%>%with_groups(c(Buyer,P_L_Category,Plant,Season,Style_Code),
+    cut.to.produce=filtered.ratio.data()%>% filter(!grepl('SUB|CAMBODIA',Plant,ignore.case = T)) %>% with_groups(c(Buyer,P_L_Category,Plant,Season,Style_Code),
                                                                  summarise,
                                                                  Cut_to_Produce=sum(CP_Produce_Received_Qty,na.rm=TRUE)/sum(CP_Cutting_Received_Qty,na.rm=TRUE)*100)
     
@@ -1317,11 +1280,12 @@ server <- function(input, output, session) {
     summary.left.stock=ratio.summary.df()%>% select(-Actual_Sales_Value) %>%
       relocate(Order_to_Ship, .before = OS_Ship_Qty) %>%
       relocate(Order_to_Cut, .before = Order_to_Ship) %>%
-      relocate(Cut_to_Produce, .before = Order_to_Cut) 
+      relocate(Cut_to_Produce, .before = Order_to_Cut) %>%
+      rename(Product_Type=P_L_Category)
 
 
     reactable(summary.left.stock %>% select(-Cut_to_Produce) ,
-              groupBy=c('Buyer','P_L_Category','Plant','Season','Style_Code'),
+              groupBy=c('Buyer','Product_Type','Plant','Season','Style_Code'),
               searchable = F, highlight = T,
               wrap = F, outlined = T, borderless = F,resizable = TRUE,
               pagination = F, sortable = T,
@@ -1337,13 +1301,13 @@ server <- function(input, output, session) {
                 # Actual_Sales_Value = colDef(name = "Actual_Sales_Value",
                 #                 aggregate = "sum",
                 #                 format=(colFormat(separators = T,digits=0))),
-                OS_Ship_Qty = colDef(name = "OS_Ship_Qty",
+                OS_Ship_Qty = colDef(name = "Ship Qty",
                                         aggregate = "sum",
                                         format=(colFormat(separators = T,digits=0))),
-                OS_Total_Order_Qty = colDef(name = "OS_Total_Order_Qty",
+                OS_Total_Order_Qty = colDef(name = "Total Order Qty",
                                 aggregate = "sum",
                                 format=(colFormat(separators = T,digits=0))),
-                Order_to_Ship = colDef(name="Order_to_Ship",
+                Order_to_Ship = colDef(name="Order to Ship",
                   # Calculate the aggregate Avg.Price as `sum(Export) / sum(Total_Order_Qty)`
                   aggregate = JS("function(values, rows) {
                                   let totalPrice = 0
@@ -1356,12 +1320,17 @@ server <- function(input, output, session) {
                                 }"),
                   format = colFormat(suffix = "%",digits=2)
                 ),
-                Cut_to_Ship = colDef(name="Cut_to_Ship",
+                Cut_to_Ship = colDef(name="Cut to Ship",
                                      format = colFormat(suffix = "%",digits=2)
                                      ),
-                Order_to_Cut=colDef(name="Order_to_Cut",
+                Order_to_Cut=colDef(name="Order to Cut",
                                     format = colFormat(suffix = "%",digits=2)
+                ),
+                Product_Type=colDef(name="Product Type",
+                ),
+                Style_Code=colDef(name="Style Code",
                 )
+                
               )
               # columns = list(
               #   Export = colDef(aggregate = "sum",format = colFormat(separators = TRUE)),
@@ -1394,7 +1363,7 @@ server <- function(input, output, session) {
     
     if(isTruthy(input$oc.no)){
       
-      Value=filtered.rm.data ()
+      Value=filtered.rm.data()
       
       over.deviation.value=paste0('$ ',round(abs(sum(Value$Material$Over_Deviation,na.rm=TRUE)/1000),2),'k')
       
@@ -1547,17 +1516,12 @@ server <- function(input, output, session) {
   
   output$over.deviation.chart <- renderApexchart({
     
-    print('Deviation Chart')
-    print(Sys.time())
-    
     req(input$oc.no)
     Over_Deviation_Data=filtered.rm.data() %>% 
       group_by(Buyer) %>%
       summarise(Value=sum(Material$Over_Deviation,na.rm=TRUE)) %>%
       arrange(desc(Value))
-    print('Deviation Chart1')
-    print(Sys.time())
-    
+   
     Over_Deviation_Data %>%apex(aes(x = Buyer, y = Value),type = 'bar') %>%
       ax_legend(position = 'top', horizontalAlign = 'left',labels=list(foreColor=c('#FFFFFB','#00000'))) %>%
       ax_tooltip(theme='light',y = list(formatter = format_num(',.4s', suffix = ' '))) %>% ax_chart(foreColor='#FFFFFB') %>%
@@ -1576,16 +1540,12 @@ server <- function(input, output, session) {
     req(input$oc.no)
     
     filtered.rm.data=filtered.rm.data()
-    print('Deviation trend Chart')
-    print(Sys.time())
     
     Over_Deviation_Data=filtered.rm.data %>% 
       group_by(Week) %>%
       summarise(Value=sum(Material$Over_Deviation,na.rm=TRUE)) %>% 
       mutate(Category='Over Deviation') 
-    
-    print('Deviation trend Chart1')
-    print(Sys.time())
+  
     Over_Deviation_Percentage=filtered.rm.data %>% 
       with_groups(c(Week),
                   summarise,
@@ -1596,10 +1556,7 @@ server <- function(input, output, session) {
       replace_na(list(Actual_sales=0))%>%
       mutate(Value=abs(Over_Deviation)/Actual_sales*100,
              Category='Over Deviation Percentage') %>% select(Week,Value,Category)
-    
-    print('Deviation trend Chart2')
-    print(Sys.time())
-       
+  
     Over_Deviation_Data %>% bind_rows(Over_Deviation_Percentage) %>%
       subset(Category %in% c("Over Deviation", "Over Deviation Percentage")) %>% 
       transform(Value = round(Value,2)) %>%
@@ -1628,11 +1585,8 @@ server <- function(input, output, session) {
   })
   
   over.deviation.df<- reactive({
-    
-    
+
     summary.data =rm.data  %>%filter(Week %in% input$week) 
-    print('df')
-    print(Sys.time())
 
     summary.over.deviation= summary.data  %>%
       mutate(Item_Code=Material$Item_Code,
@@ -1641,33 +1595,29 @@ server <- function(input, output, session) {
        summarise(Over_Deviation=round(sum(Material$Over_Deviation,na.rm=TRUE),2)) %>% 
       select(-matches('Material'))
     
-
-    print(head(summary.over.deviation$Style_Code))
-    print(Sys.time())
-    
     summary.over.deviation=summary.over.deviation %>%
       mutate(Style_Code=str_sub(Style_Code,1,9))
     
-
-    print('Deviation OPEN QTY Chart')
-    print(Sys.time())
     # open.qty.data=open.qty %>% mutate(Style_Code=str_sub(Style_Code,1,9),
     #                                        Open_Qty=as.double(DOC_Order_Qty)-as.double(Ship_Qty))
-    # 
-    # open.qty.data=open.qty.data%>%
-    #   filter(Open_Qty>0)%>%
-    #   group_by(Style_Code)%>%
-    #   summarise(Open_Qty=sum(Open_Qty)) %>%
-    #   mutate(Style_Code=str_sub(Style_Code,1,9))
-    
+
+    open.qty.data=open.qty()%>%
+      filter(Open_Qty>0)%>%
+      group_by(Style_Code,Buyer)%>%
+      summarise(Open_Qty=sum(Open_Qty)) %>%
+      mutate(Style_Code=str_sub(Style_Code,1,9))
+
 
     summary.over.deviation=summary.over.deviation %>%
       mutate(Style_Code=str_sub(Style_Code,1,9)) %>%
-      left_join(open.qty.data, by=c('Style_Code'))%>%replace_na(list(Open_Qty=0))%>%
+      left_join(open.qty.data, by=c('Buyer','Style_Code'))%>%
+      replace_na(list(Open_Qty=0))%>%
       relocate(Open_Qty, .before = Over_Deviation) %>% arrange(Over_Deviation) %>%
       group_by(Buyer,Plant,P_L_Category,Style_Code,Item_Code,Mat_Size_Code,OCNo) %>%
-      summarise(Open_Qty=sum(Open_Qty),
+      summarise(Open_Qty=first(Open_Qty),
                 Over_Deviation=round(sum(Over_Deviation,na.rm=TRUE),2))
+    
+    return(summary.over.deviation)
     
   })
   
@@ -1684,13 +1634,9 @@ server <- function(input, output, session) {
 
   output$over.deviation.summary <- renderReactable({
     
-
-    print('over.deviation.summary')
-    print(Sys.time())
-    
     summary.over.deviation=over.deviation.df() %>% 
       group_by(Buyer,Plant,P_L_Category,Style_Code,Item_Code,Mat_Size_Code) %>%
-      summarise(Open_Qty=sum(Open_Qty),
+      summarise(Open_Qty=first(Open_Qty),
                 Over_Deviation=round(sum(Over_Deviation,na.rm=TRUE),2))
     
     reactable(summary.over.deviation,groupBy=c('Buyer','Plant','P_L_Category','Style_Code','Item_Code','Mat_Size_Code'),
@@ -1703,90 +1649,17 @@ server <- function(input, output, session) {
               theme = reactableTheme(
                 color = '#FFFFFB',
                 backgroundColor = '#000000',
-                searchInputStyle = list(width = "30%"),
-                headerStyle = list(background = "#44546A", color = "white", fontWeight = "normal"),
-                footerStyle = list(fontWeight = "normal", background = "#FFFFFB"),
-                rowSelectedStyle = list(backgroundColor = "#FFFF99", boxShadow = "inset 2px 0 0 0 #41ab5d")
-              ), 
+                # searchInputStyle = list(width = "30%"),
+                # headerStyle = list(background = "#44546A", color = "white", fontWeight = "normal"),
+                # footerStyle = list(fontWeight = "normal", background = "#FFFFFB"),
+                # rowSelectedStyle = list(backgroundColor = "#FFFF99", boxShadow = "inset 2px 0 0 0 #41ab5d")
+              ),
               columns = list(
-                Over_Deviation = colDef(name = "Over_Deviation",
+                Over_Deviation = colDef(name = "Over Deviation",
                               aggregate = "sum",
-                              format=(colFormat(separators = T,digits=0))),
-                Plant = colDef(minWidth = 100,
-                  html = TRUE,
-                  cell =  function(value) {
-                    with_tippy(
-                      div(
-                        value,
-                      ),
-                      tooltip = value
-                    )
-                  },
-                )
+                              format=(colFormat(separators = T,digits=0)))
                 ),
-              # rowStyle = function(index) {
-              #   if(grepl('Total', first(otd.df[index, input$otd.brk.categ])))
-              #     list(borderTop = '1px solid #bdbdbd',
-              #          borderBottom = '1px solid black',
-              #          fontWeight = 'bold',
-              #          cursor = 'pointer')
-              #   else
-              #     list(cursor = "pointer")
-              # },
-              # style = list(fontSize = "11px"),
-              # # defaultColDef = colDef(format = colFormat(separators = TRUE, digits = 0),
-              #                        style = function(value, index, name) { if(name %in% names(otd.df)) if(value == 0) list(color = '#f0f0f0')},
-              #                        minWidth = 60),
-              # columns = list(
-              #   `Additional Shipped Qty` = colDef(name = 'Add. Shipped', 
-              #                                     style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #   `Additional Shipped Value` = colDef(name = 'Add. Shipped $', format = colFormat(prefix = '$ ', separators = T, digits = 0),
-              #                                       style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #   `Short Shipped Qty` = colDef(name = 'Short Shipped', 
-              #                                style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #   `Short Shipped Value` = colDef(name = 'Short Shipped $', format = colFormat(prefix = '$ ', separators = T, digits = 0),
-              #                                  style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #   `OFF %` = colDef(cell = function(value) {otd.perc.bar(value)}),
-              #   `OTD Qty %` = colDef(cell = function(value) {otd.perc.bar(value)}),
-              #   `OTD PO %` = colDef(cell = function(value) {otd.perc.bar(value)}),
-              #   `DIFOT %` = colDef(cell = function(value) {otd.perc.bar(value)})
-              # ),
-              # details = function(index){
-              #   cust <- otd.df[index, input$otd.brk.categ] %>% first()
-              #   otd.df.det %>%
-              #     filter(if_any(any_of(input$otd.brk.categ), ~ . == cust)) %>%
-              #     select(-all_of(input$otd.brk.categ)) %>%
-              #     reactable(searchable = F, highlight = T,
-              #               wrap = T, outlined = T, bordered = T,
-              #               pagination = F, sortable = T,
-              #               theme = reactableTheme(
-              #                 searchInputStyle = list(width = "30%"),
-              #                 headerStyle = list(background = "#44546A", color = "white", fontWeight = "normal"),
-              #                 footerStyle = list(fontWeight = "normal", background = "#f0f0f0")
-              #               ), 
-              #               rowStyle = list(cursor = "pointer"),
-              #               style = list(fontSize = "10px"),
-              #               defaultColDef = colDef(format = colFormat(separators = TRUE, digits = 0),
-              #                                      style = function(value) { if(value == 0) list(color = '#f0f0f0')},
-              #                                      minWidth = 60),
-              #               # columns = list(
-              #               #   `Additional Shipped Qty` = colDef(name = 'Add. Shipped', 
-              #               #                                     style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #               #   `Additional Shipped Value` = colDef(name = 'Add. Shipped $', format = colFormat(prefix = '$ ', separators = T, digits = 0),
-              #               #                                       style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #               #   `Short Shipped Qty` = colDef(name = 'Short Shipped', 
-              #               #                                style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #               #   `Short Shipped Value` = colDef(name = 'Short Shipped $', 
-              #               #                                  style = function(value){ list(color = case_when(value < 0 ~ '#a50f15', value == 0 ~ '#f0f0f0', TRUE ~ '#006d2c')) }),
-              #               #   `OFF %` = colDef(cell = function(value) {otd.perc.bar(value)}),
-              #               #   `OTD Qty %` = colDef(cell = function(value) {otd.perc.bar(value)}),
-              #               #   `OTD PO %` = colDef(cell = function(value) {otd.perc.bar(value)}),
-              #               #   `DIFOT %` = colDef(cell = function(value) {otd.perc.bar(value)})
-              #               # )
-              #     ) %>%
-              #     div(style = "padding: 1rem; background-color: #f0f0f0;") %>%
-              #     tryCatch(error = function(e) reactable(data = tibble(Message = "No data, please check filters...")))
-              # }
+              
               
     )
   })
@@ -1966,6 +1839,7 @@ server <- function(input, output, session) {
     # suppressWarnings()
     
   })
+  
   # Get Under Deviation Summary
   
   under.deviation.df <- reactive({
@@ -1987,29 +1861,21 @@ server <- function(input, output, session) {
     # open.qty.data <<- fetch(dbSendQuery(con,query.open.qty), -1)
     # dbClearResult(dbListResults(con)[[1]])
     
-    open.qty.data=open.qty %>% mutate(Style_Code=str_sub(Style_Code,1,9),
-                                           Open_Qty=as.double(DOC_Order_Qty)-as.double(Ship_Qty)) 
-    open.qty.data=open.qty.data%>%filter(Open_Qty>0)%>%  with_groups(c(Style_Code),
+    # open.qty.data=open.qty %>% mutate(Style_Code=str_sub(Style_Code,1,9),
+    #                                        Open_Qty=as.double(DOC_Order_Qty)-as.double(Ship_Qty)) 
+    open.qty.data=open.qty()%>%filter(Open_Qty>0)%>%  with_groups(c(Style_Code,Buyer),
                                                                      summarise,
                                                                      Open_Qty=sum(Open_Qty)) %>%
       mutate(Style_Code=str_sub(Style_Code,1,9))
-    print('Start')
-    print(Sys.time())
-    
-    summary.under.deviation.x=summary.under.deviation %>% 
-      left_join(open.qty.data, by=c('Style_Code'))
-    
-  
-    print('Middle')
-    print(Sys.time())
+   
+   
     summary.under.deviation=summary.under.deviation %>% 
-      left_join(open.qty.data, by=c('Style_Code')) %>%
+      left_join(open.qty.data, by=c('Buyer','Style_Code')) %>%
       arrange(Under_Deviation)%>%replace_na(list(Open_Qty=0))%>%
       relocate(Open_Qty, .before = Under_Deviation) 
     
-    print('Finish')
-    print(Sys.time())
-    print('xyz')
+    
+    return(summary.under.deviation)
     
     
     
@@ -2037,7 +1903,7 @@ server <- function(input, output, session) {
       group_by(Buyer,P_L_Category,Style_Code,Season,Item_Code,Mat_Size_Code) %>%
       summarise(Open_Qty=sum(Open_Qty),
                 Under_Deviation=round(sum(Under_Deviation,na.rm=TRUE),2))
-
+  
     reactable(summary.under.deviation,groupBy=c('Buyer','P_L_Category','Style_Code','Season','Item_Code','Mat_Size_Code'),searchable = F, highlight = T,
               wrap = F, outlined = T, borderless = F,bordered=T,width='auto',
               pagination = F, sortable = T,resizable = T,
@@ -2053,18 +1919,7 @@ server <- function(input, output, session) {
               columns = list(
                 Under_Deviation = colDef(name = "Under_Deviation",
                                         aggregate = "sum",
-                                        format=(colFormat(separators = T,digits=0))),
-                Style_Code = colDef(
-                    html = TRUE,
-                    cell =  function(value) {
-                      with_tippy(
-                        div(
-                          value,
-                        ),
-                        tooltip = value
-                      )
-                    },
-                )
+                                        format=(colFormat(separators = T,digits=0)))
                     
                 
                 ),
@@ -2346,12 +2201,16 @@ server <- function(input, output, session) {
   
   filtered.po.data <- reactive({
     
-    po=mongo("PO_Summary",db='Weekly_Reconcilation_Report',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+    req(input$oc.no)
+    
+    po=mongo("PO_Summary",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
     
     query <- paste('{"OCNo" : {"$in":',toJSON(input$oc.no, auto_unbox=TRUE),'}}', sep='')
     
-    po.data=po$find(query=query)
+    po.data=po$find()
     
+    
+    po.data = po.data %>% filter(OCNo %in% input$oc.no)
     po.data %>%
       mutate(PO=sum(GRN_Value,na.rm =TRUE)/sum(Planned_RMC_Value_wO_Adhoc,na.rm=TRUE),
              GRN=sum(PO_Value,na.rm =TRUE)/sum(Planned_RMC_Value_wO_Adhoc,na.rm=TRUE),
@@ -2376,12 +2235,12 @@ server <- function(input, output, session) {
       
       po.data.value=paste0(round(sum(abs(Value$GRN_Value),na.rm =TRUE)/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE)*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(po.data.value, style = "font-size: 50%;"), tags$p("PO", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(po.data.value, style = "font-size: 50%;"), tags$p("PO Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("PO", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("PO Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2395,12 +2254,12 @@ server <- function(input, output, session) {
       
       grn.data.value=paste0(round((sum(Value$PO_Value,na.rm =TRUE)/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE))*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(grn.data.value, style = "font-size: 50%;"), tags$p("GRN", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(grn.data.value, style = "font-size: 50%;"), tags$p("GRN Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2414,7 +2273,7 @@ server <- function(input, output, session) {
       
       grn.trans.data=paste0(round(((sum(Value$GRN_Value,na.rm =TRUE)+sum(Value$Transfer_Value,na.rm =TRUE))/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE))*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(grn.trans.data, style = "font-size: 50%;"), tags$p("GRN+Trans", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(grn.trans.data, style = "font-size: 50%;"), tags$p("GRN+Trans Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
@@ -2471,12 +2330,12 @@ server <- function(input, output, session) {
       
       po.data.value=paste0(round(sum(abs(Value$GRN_Value),na.rm =TRUE)/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE)*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(po.data.value, style = "font-size: 50%;"), tags$p("PO", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(po.data.value, style = "font-size: 50%;"), tags$p("PO Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0k', style = "font-size: 50%;"), tags$p("PO", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0k', style = "font-size: 50%;"), tags$p("PO Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2490,12 +2349,12 @@ server <- function(input, output, session) {
       
       grn.data.value=paste0(round((sum(Value$PO_Value,na.rm =TRUE)/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE))*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(grn.data.value, style = "font-size: 50%;"), tags$p("GRN", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(grn.data.value, style = "font-size: 50%;"), tags$p("GRN Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2509,12 +2368,12 @@ server <- function(input, output, session) {
       
       grn.trans.data=paste0(round(((sum(Value$GRN_Value,na.rm =TRUE)+sum(Value$Transfer_Value,na.rm =TRUE))/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE))*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(grn.trans.data, style = "font-size: 50%;"), tags$p("GRN+Trans", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(grn.trans.data, style = "font-size: 50%;"), tags$p("GRN+Trans Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN+Trans", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN+Trans Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2565,12 +2424,12 @@ server <- function(input, output, session) {
 
       po.data.value=paste0(round(sum(abs(Value$GRN_Value),na.rm =TRUE)/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE)*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(po.data.value, style = "font-size: 50%;"), tags$p("PO", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(po.data.value, style = "font-size: 50%;"), tags$p("PO Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0k', style = "font-size: 50%;"), tags$p("PO", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0k', style = "font-size: 50%;"), tags$p("PO Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2584,12 +2443,12 @@ server <- function(input, output, session) {
       
       grn.data.value=paste0(round((sum(Value$PO_Value,na.rm =TRUE)/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE))*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(grn.data.value, style = "font-size: 50%;"), tags$p("GRN", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(grn.data.value, style = "font-size: 50%;"), tags$p("GRN Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2603,12 +2462,12 @@ server <- function(input, output, session) {
       
       grn.trans.data=paste0(round(((sum(Value$GRN_Value,na.rm =TRUE)+sum(Value$Transfer_Value,na.rm =TRUE))/sum(Value$Planned_RMC_Value_wO_Adhoc,na.rm=TRUE))*100,2),'%')
       
-      setBorderColor(valueBox(tags$p(grn.trans.data, style = "font-size: 50%;"), tags$p("GRN+Trans", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
+      setBorderColor(valueBox(tags$p(grn.trans.data, style = "font-size: 50%;"), tags$p("GRN+Trans Coverage", style = "font-size: 80%;"),color='black',icon = icon("dollar")),'#FFFFFB')
       
     }
     else{
       
-      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN+Trans", style = "font-size: 80%;"),color='black'),'#FFFFFB')
+      setBorderColor(valueBox(tags$p('0%', style = "font-size: 50%;"), tags$p("GRN+Trans Coverage", style = "font-size: 80%;"),color='black'),'#FFFFFB')
       
     }
     
@@ -2657,14 +2516,20 @@ server <- function(input, output, session) {
     
     req(input$oc.no)
     
-    other.ratio.data=mongo("Other_Ratio_Summary",db='Weekly_Reconcilation_Report',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
-    query <- paste('{"OCNo" : {"$in":',toJSON(input$oc.no, auto_unbox=TRUE),'}}', sep='')
-    additional.ratio=other.ratio.data$find(query=query)
+    other.ratio.data=mongo("Other_Ratio_Summary",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+    # query <- paste('{"OCNo" : {"$in":',toJSON(input$oc.no, auto_unbox=TRUE),'}}', sep='')
+    additional.ratio.data=other.ratio.data$find()
+    
+
+    additional.ratio =additional.ratio.data %>%
+      # filter(OCNo %in% input$oc.no )%>%
+      filter(!grepl('SUB|CAMBODIA',Plant,ignore.case = T))
     
     additional.ratio=additional.ratio %>%
       mutate(across(matches('Qty'), ~replace(., is.na(.), "0")),
              across(matches('Qty'), as.numeric)) %>%
       summarise(across(where(is.numeric), sum))
+  
     
     ratio.data.cal =additional.ratio %>%
       mutate( Cut_Order=additional.ratio$Cutting_Received_Qty /additional.ratio$Total_Order_Qty,
@@ -2728,19 +2593,27 @@ server <- function(input, output, session) {
     
     if(input$consumption.category=='Over Deviation'){
       
-      Under_Deviation_Data=filtered.rm.data()$Material %>% 
+      Under_Deviation_Data=rm.data$Material %>% 
         with_groups(c(Item_Code),
                     summarise,
                     Value=round((sum(abs(Over_Deviation),na.rm=TRUE)/sum(Costed_RM_Value,na.rm=TRUE))*100),2)%>%
         filter(Value>0)
       
     }
-    else{
-      Under_Deviation_Data=filtered.rm.data()$Material %>% 
+    else if(input$consumption.category=='Over Deviation'){
+      Under_Deviation_Data=rm.data$Material %>% 
         with_groups(c(Item_Code),
                     summarise,
                     Value=round((sum(Under_Deviation,na.rm=TRUE)/sum(Costed_RM_Value,na.rm=TRUE))*100),2)%>%
         filter(Value>0)
+    }else{
+      
+      Under_Deviation_Data=rm.data$Material %>% 
+        with_groups(c(Item_Code),
+                    summarise,
+                    Value=round((sum(Under_Deviation+abs(Over_Deviation),na.rm=TRUE)/sum(Costed_RM_Value,na.rm=TRUE))*100),2)%>%
+        filter(Value>0)
+      
     }
     
     
@@ -2776,21 +2649,27 @@ server <- function(input, output, session) {
     
     if(input$consumption.category=='Over Deviation'){
       
-      Under_Deviation_Data=filtered.rm.data()$Material %>% 
+      Under_Deviation_Data=rm.data$Material %>% 
         with_groups(c(Item_Code),
                     summarise,
                     Value=round(sum(abs(Over_Deviation),na.rm=TRUE),2)) %>%
         filter(Value!=0)%>% arrange(desc(Value)) %>% head(100)
       
     }
-    else{
-      Under_Deviation_Data=filtered.rm.data()$Material %>% 
+    else if(input$consumption.category=='Under Deviation'){
+      Under_Deviation_Data=rm.data$Material %>% 
         with_groups(c(Item_Code),
                     summarise,
                     Value=round(sum(Under_Deviation,na.rm=TRUE),2)) %>%
         filter(Value!=0)%>% arrange(desc(Value)) %>% head(100)
     }
-    
+    else{
+      Under_Deviation_Data=rm.data$Material %>% 
+        with_groups(c(Item_Code),
+                    summarise,
+                    Value=round(sum(Under_Deviation+abs(Over_Deviation),na.rm=TRUE),2)) %>%
+        filter(Value!=0)%>% arrange(desc(Value)) %>% head(100)
+    }
 
     Under_Deviation_Data %>%
       apex(aes(x = Item_Code, y = Value,fill=Item_Code),type = 'treemap',options = list(colors = custom_palette)) #%>%
@@ -2818,15 +2697,22 @@ server <- function(input, output, session) {
       Under_Deviation_Data=filtered.rm.data %>%
         with_groups(c(Item_Code,Week),
                     summarise,
-                    Value=round((sum(abs(Material$Over_Deviation),na.rm=TRUE)/sum(Material$Costed_RM_Value,na.rm=TRUE))*100,2))%>%
+                    Value=round((sum(abs(Material$Over_Deviation),na.rm=TRUE)/sum(Material$Costed_RM_Value,na.rm=TRUE)),2))%>%
         filter(Value!=0)
       
     }
-    else{
+    else if(input$consumption.category=='Under Deviation'){
       Under_Deviation_Data=filtered.rm.data %>% 
         with_groups(c(Item_Code,Week),
                     summarise,
                     Value=round((sum(Material$Under_Deviation,na.rm=TRUE)/sum(Material$Costed_RM_Value,na.rm=TRUE))*100,2)) %>%
+        filter(Value!=0) 
+    }else{
+      
+      Under_Deviation_Data=filtered.rm.data %>% 
+        with_groups(c(Item_Code,Week),
+                    summarise,
+                    Value=round((sum(Material$Under_Deviation+abs(Material$Over_Deviation),na.rm=TRUE)/sum(Material$Costed_RM_Value,na.rm=TRUE))*100,2)) %>%
         filter(Value!=0) 
     }
     
@@ -2845,8 +2731,7 @@ server <- function(input, output, session) {
     df=over.consumption.heatmap.df()
     
     # cols= list(
-    print(head(over.consumption.heatmap.df()))
-    
+
     cols <- list();
     
     index = 1
@@ -2855,15 +2740,16 @@ server <- function(input, output, session) {
       if(str_detect(i, "20")){
         x = list(colDef(
           align = "center",
-          format = colFormat(percent = T, digits = 2),
+          format = colFormat(percent = T, digits = 2,suffix='%'),
           style = function(value) {
+            value=as.numeric(value)
             if (value > 0 & value<=3) {
-              color = '#F8F4F9'
-            }else if (value>3 & value<5) {
+              color = '#A393BF'
+            }else if (value>3 & value<=5) {
               color = '#AAF683'
-            }else if (value>5 & value< 10) {
+            }else if (value>5 & value<=10) {
               color = '#F5E2C8'
-            }else if (value>10 & value< 20) {
+            }else if (value>10 & value<= 20) {
               color = '#FDCA40'
             } else if(value>20 & value<100){
               color = '#088A08'
@@ -2879,10 +2765,12 @@ server <- function(input, output, session) {
       }
       else{
         x = list(colDef(
+          sticky = 'left',
+          filterable=TRUE,
           align = "center",
           style = function(value) {
-            color <- "#00052F"
-            list(background = color, color="white",border = "0.25px solid black")
+            color <- "#A0AAB2"
+            list(background = color, color="black",border = "0.25px solid black")
           }))
         
       }
@@ -2902,34 +2790,16 @@ server <- function(input, output, session) {
               bordered = TRUE, striped = TRUE,
               rowStyle = list(cursor = "pointer"),compact=T,
               theme = reactableTheme(
-                color = '#FFFFFB',
-                backgroundColor = '#000000',
-                headerStyle = list(background = "#00052F", color = "white", fontWeight = "normal",border = "0.25px solid black"),
+                color = 'white',
+                backgroundColor = 'black',
+                borderColor = '#FFFFFB',
+                headerStyle = list(background = "#00052F", color = "white", fontWeight = "normal",border = "0.25px white"),
+                filterInputStyle=list(background = "white", color = "black", fontWeight = "normal",border = "0.25px black"),
               ),
               style = list(fontSize = "10.5px"),
               columns=cols,
-              # defaultColDef =  colDef(
-              #     style = function(value) {
-              #         if (value > 0 & value<=3) {
-              #           color = '#F8F4F9'
-              #         }else if (value>3 & value<5) {
-              #           color = '#F1FAEE'
-              #         }else if (value>5 & value< 10) {
-              #           color = '#F5E2C8'
-              #         }else if (value>10 & value< 20) {
-              #           color = '#FDCA40'
-              #         } else if(value>20 & value<100){
-              #           color = '#088A08'
-              #         }else if(value>=100){
-              #         color = '#FF0000'
-              #         }else{
-              #           color='black'
-              #         }
-              #         list(background = color, color=color,border = "0.25px solid black")
-              #     }
-              #   )
-              )
-  
+              ) 
+
     
     
   })
@@ -3011,8 +2881,29 @@ server <- function(input, output, session) {
                   Over_Deviation=abs(sum(Over_Deviation,na.rm=TRUE)),
                   Under_Deviation_Percentage=sum(Under_Deviation,na.rm=TRUE)/sum(Costed_RM_Value,na.rm=TRUE),
                   Over_Deviation_Percentage=abs(sum(Over_Deviation,na.rm=TRUE))/sum(Costed_RM_Value,na.rm=TRUE)
-                  ) %>% arrange(desc(Under_Deviation)) %>% head(5)
+                  )  %>%
+      mutate(Total_Deviation=Under_Deviation + Over_Deviation)
+  
     
+    if(input$deviation.category=='Under Deviation'){
+      
+      saving.data=saving.data %>% arrange(desc(Under_Deviation)) %>% head(5)
+      
+    }
+    else if(input$deviation.category=='Over Deviation'){
+      saving.data=saving.data %>% 
+        arrange(desc(Over_Deviation)) %>% 
+        head(5) %>% 
+        relocate(Over_Deviation, .before = Under_Deviation)
+      
+    }
+    else{
+      
+      saving.data=saving.data %>% 
+        arrange(desc(Total_Deviation)) %>% 
+        head(5) %>% 
+        relocate(Over_Deviation, .before = Under_Deviation)
+    }
     
   })
   
@@ -3065,8 +2956,20 @@ server <- function(input, output, session) {
                   Over_Deviation=abs(sum(Material$Over_Deviation,na.rm=TRUE)),
                   Under_Deviation_Percentage=sum(Material$Under_Deviation,na.rm=TRUE)/sum(Material$Costed_RM_Value,na.rm=TRUE),
                   Over_Deviation_Percentage=abs(sum(Material$Over_Deviation,na.rm=TRUE))/sum(Material$Costed_RM_Value,na.rm=TRUE)
-      )%>%  arrange(desc(Under_Deviation)) %>% head(5)
+      )
     
+    if(input$deviation.category=='Under Deviation'){
+      
+      saving.data=saving.data %>% arrange(desc(Under_Deviation)) %>% head(5)
+      
+    }
+    else{
+      saving.data=saving.data %>% 
+        arrange(desc(Over_Deviation)) %>% 
+        head(5) %>% 
+        relocate(Over_Deviation, .before = Under_Deviation)
+      
+    }
     
   })
   
@@ -3084,7 +2987,7 @@ server <- function(input, output, session) {
                   name="Under_Deviation_Percentage",
                   format = colFormat(percent = T, digits = 2)),
                 Over_Deviation_Percentage=colDef(
-                  name="Over_Deviation_Percentage",
+                  name="Over Deviation Percentage",
                   format = colFormat(percent = T, digits = 2))
                 
               ),

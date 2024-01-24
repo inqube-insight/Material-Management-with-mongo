@@ -30,6 +30,7 @@ library(mongolite)
 library(jsonlite)
 library(scales)
 library(viridis)
+library(reactablefmtr)
 
 recon.data=data.frame()
 options(shiny.usecairo=T) 
@@ -46,12 +47,25 @@ source('server.R')
 # 
 # recon.data=recon.data %>%
 #   mutate(across(-matches('Code|Type|No|Name|Week|Category|Status|UOM|Plant|Season|Buyer|Closed.On'), as.double)) 
+# print('SALES START')
+# print(Sys.time())
 
-s =mongo("Sales_Summary",db='Weekly_Reconcilation_Report',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+s =mongo("Sales_Summary",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
 sales.data=s$find('{}')
+sales.data =sales.data %>% filter(!Week %in% c('2023-20','2023-21','2023-22'))%>%
+  mutate(Plant= case_when(
+    grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
+    grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
+    grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
+    grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
+    grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
+    grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
+    TRUE ~ Plant
+  ))
+# print('SALES FINISH')
+# print(Sys.time())
 
-
-r=mongo("RM_Summary",db='Weekly_Reconcilation_Report',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+r=mongo("RM_Summary",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
 rm.data=r$find('{}')
 
 
@@ -61,20 +75,44 @@ rm.data =rm.data%>%
               across(everything(),first)
   )
 
-ratio=mongo("Ratio_Summary",db='Weekly_Reconcilation_Report',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
-ratio.data=ratio$find('{}')
+rm.data=rm.data %>%
+  mutate(Plant= case_when(
+    grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
+    grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
+    grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
+    grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
+    grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
+    grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
+    TRUE ~ Plant
+  ))
+# print('RM FINISH')
+# print(x=Sys.time())
+# w.off.data =mongo("Write_Off_Details",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+# W.Off.Data=w.off.data$find('{}')
 
-open=mongo("VPO_Update_Open",db='Weekly_Reconcilation_Report',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
-open.qty =open$find(fields='{"Style_Code":1,"Color_Code":1,"DOC_Order_Qty":1,"Ship_Qty":1}')
+rm.data =rm.data %>%
+  mutate(Material_Item_Code=Material$Item_Code,
+         Material_Mat_Color_Code=Material$Mat_Color_Code
+         )
 
-open.qty.data=open.qty %>% mutate(Style_Code=str_sub(Style_Code,1,9),
-                                  Open_Qty=as.double(DOC_Order_Qty)-as.double(Ship_Qty))
+# ratio=mongo("Ratio_Summary",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+# ratio.data=ratio$find(query='{"Status":"Active"}')
+# ratio.data =ratio.data %>%
+#   mutate(Plant= case_when(
+#     grepl('QUANTUM CLOTHING HORANA', Plant, ignore.case = T) ~ 'QCL',
+#     grepl('SUB-QUANTUM APPAREL CAMBODIA', Plant, ignore.case = T) ~ 'QAC',
+#     grepl('BRANDIX ATHLEISURE POLONNARUWA', Plant, ignore.case = T) ~ 'BALP',
+#     grepl('BRANDIX ATHLEISURE GIRITALE', Plant, ignore.case = T) ~ 'BALG',
+#     grepl('MINUWANGODA', Plant, ignore.case = T) ~ 'BAIM',
+#     grepl('INQUBE SOLUTION SEAMLESS-SEW', Plant, ignore.case = T) ~ 'ISSW',
+#     TRUE ~ Plant
+#   ))
 
-open.qty.data=open.qty.data%>%
-  filter(Open_Qty>0)%>%
-  group_by(Style_Code)%>%
-  summarise(Open_Qty=sum(Open_Qty)) %>%
-  mutate(Style_Code=str_sub(Style_Code,1,9))
+# open=mongo("VPO_Update_Open",db='Weekly_Reconcilation',url=mongo_url,options = ssl_options(weak_cert_validation = TRUE))
+# open.qty =open$find(fields='{"Style_Code":1,"Season":1,"Open_Qty":1,"Buyer":1}')
+# 
+# open.qty.data=open.qty %>% mutate(Style_Code=str_sub(Style_Code,1,9))
+
 
 week.data =sales.data %>% distinct(Week)
 

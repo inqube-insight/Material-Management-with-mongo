@@ -115,17 +115,17 @@ ui <- dashboardPage(
                                              
                                  ),
                                  br(),
-                                 # pickerInput(inputId = "oc.type",
-                                 #             choices = "",
-                                 #             label = "OC Type",
-                                 #             selected = "",
-                                 #             options = pickerOptions(actionsBox = T,liveSearch = T),
-                                 #             width='170px',
-                                 #             multiple = T,
-                                 #             inline = TRUE
-                                 #             
-                                 # ),
-                                 # br(),
+                                 pickerInput(inputId = "oc.type",
+                                             choices = "",
+                                             label = "OC Type",
+                                             selected = "",
+                                             options = pickerOptions(actionsBox = T,liveSearch = T),
+                                             width='170px',
+                                             multiple = T,
+                                             inline = TRUE
+
+                                 ),
+                                 br(),
                                  pickerInput(inputId = "oc.no",
                                              choices = "",
                                              label = "OC No",
@@ -249,13 +249,19 @@ ui <- dashboardPage(
                           }
                           .highcharts-drillup-button rect {
                           background-color: white!important;
-                          color:black
+                          color:#FF5733
                           }
                         .highcharts-drillup-button {
-                        ackground-color: white!important;
-                        color:black;
+                        background-color: white!important;
+                        color:#FF5733;
                         font-size: 10px;
                         }
+                        #myHC 
+                        .highcharts-drillup-button {
+                        background-color: #FF5733; /* Replace with your desired color */
+                        color: #FF5733; /* Text color */
+                      }
+                        
                         .highcharts-contextbutton{
                         symbolFill:black;
                         }
@@ -265,19 +271,23 @@ ui <- dashboardPage(
                           tabPanel('Overview',
                                    br(),
                                    fluidRow(tags$style(".small-box{border-radius: 15px;}"),
-                                     valueBoxOutput('actual.sales.value',width=3),
-                                     valueBoxOutput('actual.rmc',width=3),
-                                     valueBoxOutput('planned.rmc',width=3),
-                                     valueBoxOutput('planned.wastage',width=3),
+                                     column(2,img(src = "dollar.jpg",width='150px',height='100px')),
+                                     valueBoxOutput('actual.sales.value',width=2),
+                                     valueBoxOutput('actual.rmc',width=2),
+                                     valueBoxOutput('planned.rmc',width=2),
+                                     valueBoxOutput('planned.wastage',width=2),
+                                     valueBoxOutput('write.off',width=2)
                                    ),
                                    
                                    fluidRow(tags$style(".small-box{border-radius: 15px;}"),
-                                            valueBoxOutput('over.deviation',width=3),
-                                            valueBoxOutput('under.deviation',width=3),
-                                            valueBoxOutput('opportunity.loss',width=3),
-                                            valueBoxOutput('optimum.rmc',width=3),
+                                            valueBoxOutput('over.deviation',width=2),
+                                            valueBoxOutput('under.deviation',width=2),
+                                            valueBoxOutput('opportunity.loss',width=2),
+                                            valueBoxOutput('optimum.rmc',width=2),
+                                            valueBoxOutput('write.off.value',width=2),
+                                            column(2,img(src = "download.png",width='100px',height='100px',align='centre')),
+                                            
                                    ),
-                                   
                                    fluidRow(
                                      
                                      radioGroupButtons(
@@ -303,7 +313,13 @@ ui <- dashboardPage(
                                      downloadButton('download.opportunity.loss', label = 'Download', style = "float: right;"),
                                      style = "display:inline-block; width: 100%;"
                                    ),
-                                   
+                                   radioGroupButtons(
+                                     inputId = "top.ten.opportunity.loss",
+                                     choices = c("Style", "Material"),
+                                     status = "primary",
+                                     size='xs',
+                                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))
+                                   ),
                                    reactableOutput('opportunity.loss.summary')
                                    
                                    ),
@@ -364,7 +380,7 @@ ui <- dashboardPage(
                                    
                                    fluidRow(
                                      
-                                     withSpinner(highchartOutput("myHC",height = '250px'), type = 5, size = 0.5)
+                                     withSpinner(highchartOutput("myHC",height = '300px'), type = 5, size = 0.5)
                                      
                                    ),
                                      
@@ -399,10 +415,10 @@ ui <- dashboardPage(
                                    fluidRow(
                                      br(),
                                      column(6,
-                                            apexchartOutput('over.deviation.chart', height = '250px')
+                                            withSpinner(apexchartOutput('over.deviation.chart', height = '250px'), type = 5, size = 0.5)
                                      ),
                                      column(6,
-                                            apexchartOutput('over.deviation.trend', height = '250px')
+                                            withSpinner(apexchartOutput('over.deviation.trend', height = '250px'), type = 5, size = 0.5)
                                      ),
                                      
                                    ),
@@ -414,7 +430,7 @@ ui <- dashboardPage(
                                      style = "display:inline-block; width: 100%;"
                                    ),
                                    
-                                   reactableOutput('over.deviation.summary')
+                                   withSpinner(reactableOutput('over.deviation.summary'), type = 5, size = 0.5)
                                    
                                    ),
                           tabPanel('Under Deviation',
@@ -450,7 +466,14 @@ ui <- dashboardPage(
                                    
                                    reactableOutput('under.deviation.summary')
                                    ),
-                          tabPanel('RM Build',
+                          tabPanel('RM Insights',
+                                   br(),
+                                   
+                                   div(
+                                     h3('RM Build (Raw Material Demand Coverage Analysis)', style = "float: left;"),
+                                     style = "display:inline-block; width: 100%;"
+                                   ),
+                                   # h3('RM Build(Raw Material Demand Coverage Analysis)', style = "float: left;"),
                                    br(),
 
                                    fluidRow(tags$style(".small-box{border-radius: 15px;}"),
@@ -482,33 +505,75 @@ ui <- dashboardPage(
                                             valueBox(tags$p('0%', style = "font-size: 0%;"), tags$p("TRIMS", style = "font-size: 120%;"),color='black',width=2),
                                             
                                    ),
-                                   withSpinner(reactableOutput('po.summary', height = '250px'), type = 5, size = 0.5),
+                                   br(),
+                                   div(
+                                     h3('Ratio Analysis', style = "float: left;"),
+                                     style = "display:inline-block; width: 100%;"
+                                   ),
+                                   withSpinner(reactableOutput('po.summary', height = 'auto'), type = 5, size = 0.5),
                                    br(),
                                    radioGroupButtons(
                                      inputId = "consumption.category",
-                                     choices = c("Under Deviation", "Over Deviation"),
+                                     choices = c("Under Deviation", "Over Deviation","Total Deviation"),
                                      status = "primary",
                                      size='xs',
                                      checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                                    ),
-                                   br(),
                                    fluidRow(
-                                     br(),
+                                     
                                      column(6,
+                                            div(
+                                              h3('Deviation Distribution', style = "float: left;"),
+                                              style = "display:inline-block; width: 100%;"
+                                            ),
+                                            
                                             withSpinner(apexchartOutput('over.consumption.scatter', height = '250px'), type = 5, size = 0.5)
                                      ),
                                      column(6,
+                                            div(
+                                              h3('Deviation by Item (Top 100)', style = "float: left;"),
+                                              style = "display:inline-block; width: 100%;"
+                                            ),
                                             withSpinner(apexchartOutput('over.consumption.treemap', height = '250px'), type = 5, size = 0.5)
                                      ),
                                      
                                    ),
                                    br(),
-                                   withSpinner(reactableOutput('over.consumption.heatmap', height = '500px'), type = 5, size = 0.5),
-                                   
-                                   # withSpinner(apexchartOutput('over.consumption.heatmap', height = '250px'), type = 5, size = 0.5),
-                                   
+                                   div(
+                                     h3('HeatMap', style = "float: left;"),
+                                     style = "display:inline-block; width: 100%;"
+                                   ),
+                                   withSpinner(reactableOutput('over.consumption.heatmap', height = '300px'), type = 5, size = 0.5),
+                                   div(id = "colorLegend", 
+                                       style = "position: relative; background-color: #000; padding: 10px; border: 1px solid #000;",
+                                       "Legend:",
+                                       div(style = "background-color: #A393BF; width: 20px; height: 20px; display: inline-block;"),
+                                       "0% - 3%",
+                                       div(style = "background-color: #AAF683; width: 20px; height: 20px; display: inline-block;"),
+                                       "3% - 5%",
+                                       div(style = "background-color: #F5E2C8; width: 20px; height: 20px; display: inline-block;"),
+                                       "5% - 10%",
+                                       div(style = "background-color: #FDCA40; width: 20px; height: 20px; display: inline-block;"),
+                                       "10% - 20%",
+                                       div(style = "background-color: #088A08; width: 20px; height: 20px; display: inline-block;"),
+                                       "20% - 100%",
+                                       div(style = "background-color: #FF0000; width: 20px; height: 20px; display: inline-block;"),
+                                       "100% or above"
+                                   ),
+                                   div(
+                                     h3('Top 5 Item by Deviation', style = "float: left;"),
+                                     style = "display:inline-block; width: 100%;"
+                                   ),
                                    br(),
-                                   withSpinner(reactableOutput('saving.item.wise.tbl', height = '250px'), type = 5, size = 0.5),
+                                   radioGroupButtons(
+                                     inputId = "deviation.category",
+                                     choices = c("Over Deviation", "Under Deviation","Total Deviation"),
+                                     status = "primary",
+                                     size='xs',
+                                     checkIcon = list(yes = icon("ok", lib = "glyphicon"))
+                                   ),
+                                   
+                                   withSpinner(reactableOutput('saving.item.wise.tbl', height = 'auto'), type = 5, size = 0.5),
                                    br(),
                                    radioGroupButtons(
                                      inputId = "group.category",
@@ -518,12 +583,13 @@ ui <- dashboardPage(
                                      checkIcon = list(yes = icon("ok", lib = "glyphicon"))
                                    ),
                                    
-                                   withSpinner(reactableOutput('saving.oc.wise.tbl', height = '250px'), type = 5, size = 0.5),
+                                   withSpinner(reactableOutput('saving.oc.wise.tbl', height = 'auto'), type = 5, size = 0.5),
                                    
                                    
 
 
-                          )
+                          ),
+                          # tabPanel('W/Off')
                           # tabPanel('LeftOver Stock',
                           #          
                           #          br(),
@@ -555,15 +621,7 @@ ui <- dashboardPage(
                           #          
                           #          reactableOutput('left.over.stock.summary')
                           #          ),
-                          # tabPanel('FI Report',
-                          #          div(
-                          #            h3('FI Report', style = "float: left;"),
-                          #            downloadButton('download.fi.report', label = 'Download', style = "float: right;"),
-                          #            style = "display:inline-block; width: 100%;"
-                          #          ),
-                          #          reactableOutput('fi.report.tbl')
-                          # 
-                          #          )
+                         
 
               
                           ),
